@@ -1,0 +1,9 @@
+#gameContainer {
+  display: flex;
+  align-items: flex-start; /* aligns top edges */
+  gap: 20px; /* optional space between canvas and HUD */
+}
+
+#hud {
+  min-width: 150px; /* optional: ensure it has some width */
+}

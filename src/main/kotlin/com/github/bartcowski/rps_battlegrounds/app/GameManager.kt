@@ -1,0 +1,73 @@
+package com.github.bartcowski.rps_battlegrounds.app
+
+import com.github.bartcowski.rps_battlegrounds.config.GAME_SIZE_X
+import com.github.bartcowski.rps_battlegrounds.config.GAME_SIZE_Y
+import com.github.bartcowski.rps_battlegrounds.config.NUMBER_OF_SYMBOLS
+import com.github.bartcowski.rps_battlegrounds.config.SYMBOL_SIZE
+import com.github.bartcowski.rps_battlegrounds.model.*
+import kotlinx.coroutines.*
+import org.springframework.stereotype.Component
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.random.Random
+
+@Component
+class GameManager(
+    private val gameStateBroadcaster: GameStateBroadcaster
+) {
+    private val scope = CoroutineScope(Dispatchers.Default)
+    private val gameStates: ConcurrentHashMap<String, GameState> = ConcurrentHashMap()
+
+    init {
+        runGameLoop()
+    }
+
+    fun createNewGame(gameId: String): GameState {
+        //TODO: maybe some checks to avoid two symbols being generated on top of each other?
+        val rocks = generateSymbols(SymbolType.ROCK, NUMBER_OF_SYMBOLS)
+        val papers = generateSymbols(SymbolType.PAPER, NUMBER_OF_SYMBOLS)
+        val scissors = generateSymbols(SymbolType.SCISSORS, NUMBER_OF_SYMBOLS)
+        val allSymbols = (rocks + papers + scissors).toMutableList()
+
+        //setup for testing movement
+//        val rock = Symbol(SymbolType.ROCK, Position(0.0, 0.0))
+//        val scissors = Symbol(SymbolType.SCISSORS, Position(1100.0, 750.0))
+//        val allSymbols = mutableListOf(rock, scissors)
+
+        val newGameState = GameState(gameId, allSymbols, GameStatus.CREATED)
+        gameStates[gameId] = newGameState
+        return newGameState
+    }
+
+    fun activateGame(gameId: String) {
+        gameStates[gameId]!!.status = GameStatus.ACTIVE
+    }
+
+    private fun generateSymbols(type: SymbolType, amount: Int): MutableList<Symbol> {
+        val symbols = mutableListOf<Symbol>()
+        repeat(amount) { _ ->
+            val x = Random.nextInt(0, GAME_SIZE_X - SYMBOL_SIZE)
+            val y = Random.nextInt(0, GAME_SIZE_Y - SYMBOL_SIZE)
+            symbols.add(Symbol(type, Position(x.toDouble(), y.toDouble())))
+        }
+        return symbols
+    }
+
+    private fun runGameLoop() {
+        //TODO: currently it's one coroutine = one game loop = 1 thread running all games
+        // the problem is not that a single game is expensive to run as it's only around ~100-150 symbols (optimizations like spatial partitioning won't do much)
+        // the problem is in dozens/hundreds of games being played at the same time, single thread might have problems handling all that
+        // IDEA: have X (number of CPU?) gameState maps, run 1 loop per 1 map, load balance new games - add new game to map with fewest active games
+        scope.launch {
+            while (isActive) {
+                gameStates.values.forEach { gameState ->
+                    if (gameState.status == GameStatus.ACTIVE) {
+                        gameState.processCollisions()
+                        gameState.updateGameState()
+                        gameStateBroadcaster.broadcast(gameState.gameId, gameState)
+                    }
+                }
+                delay(50) // 20 fps
+            }
+        }
+    }
+}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rock-Paper-Scissors: Battlegrounds</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+<div id="mainMenu">
+    <h1>Rock-Paper-Scissors: Battlegrounds</h1>
+    <button id="startButton">Start</button>
+</div>
+
+<div id="gameScreen" style="display: none;">
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1200" height="800"></canvas>
+        <div id="hud">
+            <button id="beginSimulationButton">Let the game begin!</button>
+        </div>
+    </div>
+</div>
+
+<div id="gameOverScreen" style="display: none;">
+    <h2>Game Over</h2>
+    <button onclick="restartGame()">Play Again</button>
+</div>
+
+<script type="module" src="game.js"></script>
+</body>
+
+</html>
