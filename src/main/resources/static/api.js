@@ -27,3 +27,14 @@ export async function activateGame(gameId) {
         console.error("can't fetch initial game state:", error);
     }
 }
+
+export async function getUpgradesAndSpells() {
+    try {
+        const response = await fetch('/upgrades-and-spells');
+        const data = await response.json();
+        console.log(data)
+        return data;
+    } catch (error) {
+        console.error("can't fetch new-game-id:", error);
+    }
+}

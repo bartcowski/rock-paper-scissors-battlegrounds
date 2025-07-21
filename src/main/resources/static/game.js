@@ -1,8 +1,10 @@
-import { activateGame, getInitialGameState, getNewGameId } from "./api.js";
+import { activateGame, getInitialGameState, getNewGameId, getUpgradesAndSpells } from "./api.js";
 
 //references to screen elements
 const mainMenu = document.getElementById("mainMenu");
 const gameScreen = document.getElementById("gameScreen");
+const hudChooseUpgradesAndSpells = document.getElementById("hudChooseUpgradesAndSpells");
+const hudBeginSimulation = document.getElementById("hudBeginSimulation");
 const gameOverScreen = document.getElementById("gameOverScreen");
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -44,7 +46,21 @@ let gameLoopId;
 
 let gameId = null;
 let symbols = [];
-
+let players = [
+  {
+    name: "Rock",
+    actions: []
+  },
+  {
+    name: "Paper",
+    actions: []
+  },
+  {
+    name: "Scissors",
+    actions: []
+  }
+]
+let currentActionCounter = 0
 
 let socket = null;
 
@@ -66,6 +82,29 @@ async function initGame() {
   const initialGameState = await getInitialGameState(gameId);
   symbols = initialGameState.symbols
   console.log(`initial positions set for ${symbols.length} symbols`)
+
+  const upgradesAndSpells = await getUpgradesAndSpells()
+  initPlayers(upgradesAndSpells)
+
+  console.log(players)
+  
+  hudChooseUpgradesAndSpells.style.display = "block";
+  const actionsLength = upgradesAndSpells.upgrades.length + upgradesAndSpells.spells.length
+  renderUpgradeAndSpellButtons(players[currentActionCounter])
+}
+
+function initPlayers(upgradesAndSpells) {
+  const upgradeNames = upgradesAndSpells.upgrades
+  const spellNames = upgradesAndSpells.spells
+
+  for (const player of players) {
+    for (const upgradeName of upgradeNames) {
+      player.actions.push({name: upgradeName, used: false})
+    }
+    for (const spellName of spellNames) {
+      player.actions.push({name: spellName, used: false})
+    }
+  }
 }
 
 async function beginSimulation() {
@@ -131,4 +170,41 @@ function endGame() {
   cancelAnimationFrame(gameLoopId);
   gameScreen.style.display = "none";
   gameOverScreen.style.display = "block";
+}
+
+function renderUpgradeAndSpellButtons(player) {
+    const hudChooseUpgradesAndSpells = document.getElementById("hudChooseUpgradesAndSpells")
+    hudChooseUpgradesAndSpells.innerHTML = ""
+    const currentPlayerText = document.createElement("p")
+    currentPlayerText.textContent = `current player: ${player.name}`
+    hudChooseUpgradesAndSpells.appendChild(currentPlayerText)
+    for (const action of player.actions) {
+        const btn = document.createElement("button");
+        btn.textContent = action.name;
+        if (action.used) {
+          btn.disabled = true;
+        }
+        //btn.id = "playerActionButton"
+        //btn.classList.add("some-class")
+        btn.addEventListener("click", () => handlePlayerActionClick(player, action));
+        hudChooseUpgradesAndSpells.appendChild(btn);
+    }
+}
+
+function handlePlayerActionClick(player, action) {
+  console.log(`player ${player.name} clicked action: ${action.name}`);
+  player.actions.find(playerAction => playerAction.name === action.name).used = true;
+  currentActionCounter += 1;
+
+  
+  if (currentActionCounter % 3 === 0 && !player.actions.some(action => action.used === false)) {
+    renderBeginSimulationButton()
+  } else {
+    renderUpgradeAndSpellButtons(players[currentActionCounter % 3])
+  }
+}
+
+function renderBeginSimulationButton() {
+  hudChooseUpgradesAndSpells.style.display = "none";
+  hudBeginSimulation.style.display = "block"
 }

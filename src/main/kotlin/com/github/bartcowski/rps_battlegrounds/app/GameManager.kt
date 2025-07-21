@@ -23,16 +23,10 @@ class GameManager(
 
     fun createNewGame(gameId: String): GameState {
         //TODO: maybe some checks to avoid two symbols being generated on top of each other?
-        val rocks = generateSymbols(SymbolType.ROCK, NUMBER_OF_SYMBOLS)
-        val papers = generateSymbols(SymbolType.PAPER, NUMBER_OF_SYMBOLS)
-        val scissors = generateSymbols(SymbolType.SCISSORS, NUMBER_OF_SYMBOLS)
+        val rocks = generateSymbols(SymbolType.ROCK, NUMBER_OF_SYMBOLS, 0)
+        val papers = generateSymbols(SymbolType.PAPER, NUMBER_OF_SYMBOLS, NUMBER_OF_SYMBOLS)
+        val scissors = generateSymbols(SymbolType.SCISSORS, NUMBER_OF_SYMBOLS, 2 * NUMBER_OF_SYMBOLS)
         val allSymbols = (rocks + papers + scissors).toMutableList()
-
-        //setup for testing movement
-//        val rock = Symbol(SymbolType.ROCK, Position(0.0, 0.0))
-//        val scissors = Symbol(SymbolType.SCISSORS, Position(1100.0, 750.0))
-//        val allSymbols = mutableListOf(rock, scissors)
-
         val newGameState = GameState(gameId, allSymbols, GameStatus.CREATED)
         gameStates[gameId] = newGameState
         return newGameState
@@ -42,12 +36,14 @@ class GameManager(
         gameStates[gameId]!!.status = GameStatus.ACTIVE
     }
 
-    private fun generateSymbols(type: SymbolType, amount: Int): MutableList<Symbol> {
+    private fun generateSymbols(type: SymbolType, amount: Int, startId: Int): MutableList<Symbol> {
         val symbols = mutableListOf<Symbol>()
+        var id = startId
         repeat(amount) { _ ->
             val x = Random.nextInt(0, GAME_SIZE_X - SYMBOL_SIZE)
             val y = Random.nextInt(0, GAME_SIZE_Y - SYMBOL_SIZE)
-            symbols.add(Symbol(type, Position(x.toDouble(), y.toDouble())))
+            symbols.add(Symbol(id, type, Position(x.toDouble(), y.toDouble())))
+            id++
         }
         return symbols
     }
