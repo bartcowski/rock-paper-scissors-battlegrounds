@@ -1,9 +1,7 @@
 package com.github.bartcowski.rps_battlegrounds.infra
 
 import com.github.bartcowski.rps_battlegrounds.app.GameManager
-import com.github.bartcowski.rps_battlegrounds.model.GameState
-import com.github.bartcowski.rps_battlegrounds.model.Spell
-import com.github.bartcowski.rps_battlegrounds.model.Upgrade
+import com.github.bartcowski.rps_battlegrounds.model.*
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -38,18 +36,24 @@ class GameController(
     @GetMapping("/upgrades-and-spells")
     fun getUpgradesAndSpells(): UpgradesAndSpells {
         val upgrades = Upgrade.entries.map { e -> e.name }.toList()
-        val spells = Spell.entries.map { e -> e.name }.toList()
+        val spells = SpellType.entries.map { e -> e.name }.toList()
         return UpgradesAndSpells(upgrades, spells)
     }
 
-    @PostMapping("/game-state/upgrade")
-    fun playUpgrade(@RequestBody playedUpgrade: PlayedUpgrade) {
-
+    @PostMapping("/game-state/{gameId}/upgrade")
+    fun playUpgrade(@PathVariable gameId: String, @RequestBody playedUpgrade: PlayedUpgrade): ResponseEntity<Void> {
+        val upgrade = Upgrade.valueOf(playedUpgrade.upgrade)
+        gameManager.applyUpgrade(upgrade, playedUpgrade.symbolId, gameId, playedUpgrade.player)
+        return ResponseEntity.status(200).build()
     }
 
-    @PostMapping("/game-state/spell")
-    fun playSpell(@RequestBody playedSpell: PlayedSpell) {
-
+    @PostMapping("/game-state/{gameId}/spell")
+    fun playSpell(@PathVariable gameId: String, @RequestBody playedSpell: PlayedSpell): ResponseEntity<Void> {
+        val spellType = SpellType.valueOf(playedSpell.spell)
+        val position = Position(playedSpell.posX, playedSpell.posY)
+        val player = SymbolType.valueOf(playedSpell.player)
+        gameManager.applySpell(spellType, position, gameId, player)
+        return ResponseEntity.status(200).build()
     }
 
     data class GameId(val id: String)

@@ -38,3 +38,31 @@ export async function getUpgradesAndSpells() {
         console.error("can't fetch new-game-id:", error);
     }
 }
+
+export async function playUpgrade(gameId) {
+    try {
+        await fetch(`/game-state/${gameId}/upgrade`, {
+            method: 'POST',
+            body: JSON.stringify({
+                key1: 'value1',
+                key2: 'value2'
+            })
+        });
+    } catch (error) {
+        console.error("can't play upgrade:", error);
+    }
+}
+
+export async function playSpell(gameId) {
+    try {
+        await fetch(`/game-state/${gameId}/spell`, {
+            method: 'POST',
+            body: JSON.stringify({
+                key1: 'value1',
+                key2: 'value2'
+            })
+        });
+    } catch (error) {
+        console.error("can't play spell:", error);
+    }
+}

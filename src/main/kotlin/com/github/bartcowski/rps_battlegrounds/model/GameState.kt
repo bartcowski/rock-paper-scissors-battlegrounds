@@ -8,7 +8,9 @@ import kotlin.math.sqrt
 class GameState(
     val gameId: String,
     val symbols: MutableList<Symbol>,
-    var status: GameStatus) {
+    var status: GameStatus,
+    val spells: MutableList<Spell> = mutableListOf(),
+) {
 
     fun updateGameState() {
         for (symbol in symbols) {
@@ -59,6 +61,15 @@ class GameState(
             }
         }
         symbols.removeAll(symbolsToDelete)
+    }
+
+    fun applyUpgrade(symbolId: Int, upgrade: Upgrade) {
+        //NoSuchElementException thrown
+        symbols.first { it.id == symbolId }.upgrade = upgrade
+    }
+
+    fun applySpell(spellType: SpellType, position: Position, player: SymbolType) {
+        spells.add(Spell(spellType, position, player))
     }
 
     private fun calculateDistance(from: Position, to: Position): Double {

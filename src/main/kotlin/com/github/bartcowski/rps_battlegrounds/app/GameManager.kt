@@ -28,12 +28,42 @@ class GameManager(
         val scissors = generateSymbols(SymbolType.SCISSORS, NUMBER_OF_SYMBOLS, 2 * NUMBER_OF_SYMBOLS)
         val allSymbols = (rocks + papers + scissors).toMutableList()
         val newGameState = GameState(gameId, allSymbols, GameStatus.CREATED)
-        gameStates[gameId] = newGameState
+        gameStates.putIfAbsent(gameId, newGameState)
         return newGameState
     }
 
     fun activateGame(gameId: String) {
-        gameStates[gameId]!!.status = GameStatus.ACTIVE
+        if (!gameStates.containsKey(gameId)) {
+            throw IllegalArgumentException("game with ID '$gameId' not found")
+        }
+        gameStates.computeIfPresent(gameId) { _, gameState ->
+            gameState.status = GameStatus.ACTIVE
+            gameState
+        }
+    }
+
+    fun applyUpgrade(upgrade: Upgrade, symbolId: Int, gameId: String, player: String) {
+        if (!gameStates.containsKey(gameId)) {
+            throw IllegalArgumentException("game with ID '$gameId' not found")
+        }
+        gameStates.computeIfPresent(gameId) { _, gameState ->
+            gameState.applyUpgrade(symbolId, upgrade)
+            gameState
+        }
+    }
+
+    fun applySpell(spellType: SpellType, position: Position, gameId: String, player: SymbolType) {
+        if (!gameStates.containsKey(gameId)) {
+            throw IllegalArgumentException("game with ID '$gameId' not found")
+        }
+        gameStates.computeIfPresent(gameId) { _, gameState ->
+            gameState.applySpell(spellType, position, player)
+            gameState
+        }
+    }
+
+    fun getGameStateOrThrow(gameId: String): GameState {
+        return gameStates[gameId]!!
     }
 
     private fun generateSymbols(type: SymbolType, amount: Int, startId: Int): MutableList<Symbol> {
