@@ -90,6 +90,8 @@ async function initGame() {
   
   hudChooseUpgradesAndSpells.style.display = "block";
   const actionsLength = upgradesAndSpells.upgrades.length + upgradesAndSpells.spells.length
+
+  canvas.addEventListener('click', canvasClick)
   renderUpgradeAndSpellButtons(players[currentActionCounter])
 }
 
@@ -198,6 +200,7 @@ function handlePlayerActionClick(player, action) {
 
   
   if (currentActionCounter % 3 === 0 && !player.actions.some(action => action.used === false)) {
+    canvas.removeEventListener('click', canvasClick)
     renderBeginSimulationButton()
   } else {
     renderUpgradeAndSpellButtons(players[currentActionCounter % 3])
@@ -207,4 +210,27 @@ function handlePlayerActionClick(player, action) {
 function renderBeginSimulationButton() {
   hudChooseUpgradesAndSpells.style.display = "none";
   hudBeginSimulation.style.display = "block"
+}
+
+function canvasClick(event) {
+  const boundingRect = canvas.getBoundingClientRect();
+  const x = event.clientX - boundingRect.left;
+  const y = event.clientY - boundingRect.top;
+
+  for (const symbol of symbols) {
+    const symbolX = symbol.position.x
+    const symbolY = symbol.position.y
+
+    if (isSymbolClicked(x, y, symbolX, symbolY)) {
+      console.log("clicked " + symbol.type)
+    }
+  }
+  console.log({x, y})
+}
+
+function isSymbolClicked(clickX, clickY, symbolX, symbolY) {
+  return clickX > symbolX && 
+    clickX < symbolX + SYMBOL_SIZE && 
+    clickY > symbolY && 
+    clickY < symbolY + SYMBOL_SIZE
 }
