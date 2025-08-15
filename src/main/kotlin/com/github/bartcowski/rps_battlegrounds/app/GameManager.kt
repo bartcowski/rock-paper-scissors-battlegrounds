@@ -87,7 +87,6 @@ class GameManager(
             while (isActive) {
                 gameStates.values.forEach { gameState ->
                     if (gameState.status == GameStatus.ACTIVE) {
-                        gameState.processCollisions()
                         gameState.updateGameState()
                         gameStateBroadcaster.broadcast(gameState.gameId, gameState)
                     }

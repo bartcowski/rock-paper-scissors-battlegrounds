@@ -11,6 +11,7 @@ const ctx = canvas.getContext("2d");
 
 document.getElementById("startButton").addEventListener("click", startGame);
 document.getElementById("beginSimulationButton").addEventListener("click", startBattle);
+document.getElementById("restartGameButton").addEventListener("click", restartGame);
 let canvasClickHandler; //need it in outer scope, to add and remove from different functions
 
 let socket = null;
@@ -61,7 +62,7 @@ let players = [
     name: SCISSORS,
     actions: []
   }
-]
+];
 
 const ActionType = {
   UPGRADE: 'upgrade',
@@ -94,17 +95,17 @@ async function initGame() {
   console.log(`game init, ID of the game: ${gameId}`);
 
   const initialGameState = await getInitialGameState(gameId);
-  symbols = initialGameState.symbols
-  console.log(`initial positions set for ${symbols.length} symbols`)
+  symbols = initialGameState.symbols;
+  console.log(`initial positions set for ${symbols.length} symbols`);
 
-  const upgradesAndSpells = await getUpgradesAndSpells()
-  initPlayers(upgradesAndSpells)
+  const upgradesAndSpells = await getUpgradesAndSpells();
+  initPlayers(upgradesAndSpells);
 
-  console.log(players)
+  console.log(players);
   
   hudChooseUpgradesAndSpells.style.display = "block";
 
-  startSelectPhase()
+  startSelectPhase();
 }
 
 function gameLoop(timestamp) {
@@ -144,27 +145,38 @@ function determineImg(type) {
 }
 
 function initPlayers(upgradesAndSpells) {
-  const upgradeNames = upgradesAndSpells.upgrades
-  const spellNames = upgradesAndSpells.spells
+  const upgradeNames = upgradesAndSpells.upgrades;
+  const spellNames = upgradesAndSpells.spells;
 
   for (const player of players) {
     for (const upgradeName of upgradeNames) {
-      player.actions.push({name: upgradeName, type: ActionType.UPGRADE, used: false})
+      player.actions.push({name: upgradeName, type: ActionType.UPGRADE, used: false});
     }
     for (const spellName of spellNames) {
-      player.actions.push({name: spellName, type: ActionType.SPELL, used: false})
+      player.actions.push({name: spellName, type: ActionType.SPELL, used: false});
     }
   }
 }
 
 function restartGame() {
-  startGame();
+  currentActionCounter = 0;
+  for (const player of players) {
+    player.actions = [];
+  }
+  symbols = [];
+  selectedAction = null;
+  gameOverScreen.style.display = "none";
+  mainMenu.style.display = "block";
 }
 
-function endGame() {
+function endGame(winner) {
   isRunning = false;
   cancelAnimationFrame(gameLoopId);
+  const winnerText = document.getElementById('winnerInfo')
+  winnerText.textContent = `winner: ${winner}`;
+
   gameScreen.style.display = "none";
+  hudBeginSimulation.style.display = "none";
   gameOverScreen.style.display = "block";
 }
 
@@ -215,7 +227,7 @@ async function handleCanvasClick(event) {
   const y = event.clientY - boundingRect.top;
   console.log({x, y});
 
-  if (selectedAction.type == ActionType.UPGRADE) {
+  if (selectedAction.type === ActionType.UPGRADE) {
     for (const symbol of symbols) {
       const symbolX = symbol.position.x;
       const symbolY = symbol.position.y;
@@ -274,6 +286,10 @@ async function startBattle() {
     //read about interpolation for smoother movement!
     const json = JSON.parse(event.data);
     console.log(`received ws data of ${json.symbols.length} symbols`);
+
+    if (json.status === 'ENDED') {
+      endGame(json.winner)
+    }
     symbols = json.symbols;
   }
 

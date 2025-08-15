@@ -2,6 +2,7 @@ package com.github.bartcowski.rps_battlegrounds.model
 
 import com.github.bartcowski.rps_battlegrounds.config.SYMBOL_SIZE
 import com.github.bartcowski.rps_battlegrounds.config.SYMBOL_SPEED
+import org.yaml.snakeyaml.util.Tuple
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -10,9 +11,22 @@ class GameState(
     val symbols: MutableList<Symbol>,
     var status: GameStatus,
     val spells: MutableList<Spell> = mutableListOf(),
+    var winner: SymbolType? = null
 ) {
 
     fun updateGameState() {
+        if (status != GameStatus.ACTIVE) {
+            return
+        }
+        val onlyOneSymbolTypeStillInGame = onlyOneSymbolTypeStillInGame()
+        if (onlyOneSymbolTypeStillInGame._1()) {
+            status = GameStatus.ENDED
+            winner = onlyOneSymbolTypeStillInGame._2()
+            return
+        }
+
+        processCollisions()
+
         for (symbol in symbols) {
             val typeToHunt = getTypeToHunt(symbol.type)
             var closestSymbol: Symbol? = null
@@ -44,7 +58,16 @@ class GameState(
         }
     }
 
-    fun processCollisions() {
+    private fun onlyOneSymbolTypeStillInGame(): Tuple<Boolean, SymbolType> {
+        val distinctTypeSymbols = symbols.distinctBy { it.type }
+        return if (distinctTypeSymbols.size == 1) {
+            Tuple(true, distinctTypeSymbols[0].type)
+        } else {
+            Tuple(false, null)
+        }
+    }
+
+    private fun processCollisions() {
         val symbolsToDelete = mutableListOf<Symbol>()
         for (symbol in symbols) {
             val typeToHunt = getTypeToHunt(symbol.type)
