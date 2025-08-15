@@ -42,7 +42,7 @@ class GameManager(
         }
     }
 
-    fun applyUpgrade(upgrade: Upgrade, symbolId: Int, gameId: String, player: String) {
+    fun applyUpgrade(upgrade: Upgrade, symbolId: Int, gameId: String, player: SymbolType) {
         if (!gameStates.containsKey(gameId)) {
             throw IllegalArgumentException("game with ID '$gameId' not found")
         }

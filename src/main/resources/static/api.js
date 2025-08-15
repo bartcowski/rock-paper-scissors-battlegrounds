@@ -39,28 +39,37 @@ export async function getUpgradesAndSpells() {
     }
 }
 
-export async function playUpgrade(gameId) {
+export async function playUpgrade(gameId, symbolId, upgrade, player) {
     try {
         await fetch(`/game-state/${gameId}/upgrade`, {
             method: 'POST',
             body: JSON.stringify({
-                key1: 'value1',
-                key2: 'value2'
-            })
+                symbolId: symbolId,
+                upgrade: upgrade,
+                player: player
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            },
         });
     } catch (error) {
         console.error("can't play upgrade:", error);
     }
 }
 
-export async function playSpell(gameId) {
+export async function playSpell(gameId, spell, posX, posY, player) {
     try {
         await fetch(`/game-state/${gameId}/spell`, {
             method: 'POST',
             body: JSON.stringify({
-                key1: 'value1',
-                key2: 'value2'
-            })
+                spell: spell,
+                posX: posX,
+                posY: posY,
+                player: player
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            },
         });
     } catch (error) {
         console.error("can't play spell:", error);

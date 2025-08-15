@@ -43,7 +43,8 @@ class GameController(
     @PostMapping("/game-state/{gameId}/upgrade")
     fun playUpgrade(@PathVariable gameId: String, @RequestBody playedUpgrade: PlayedUpgrade): ResponseEntity<Void> {
         val upgrade = Upgrade.valueOf(playedUpgrade.upgrade)
-        gameManager.applyUpgrade(upgrade, playedUpgrade.symbolId, gameId, playedUpgrade.player)
+        val player = SymbolType.valueOf(playedUpgrade.player)
+        gameManager.applyUpgrade(upgrade, playedUpgrade.symbolId, gameId, player)
         return ResponseEntity.status(200).build()
     }
 

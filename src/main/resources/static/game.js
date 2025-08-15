@@ -1,4 +1,4 @@
-import { activateGame, getInitialGameState, getNewGameId, getUpgradesAndSpells } from "./api.js";
+import { activateGame, getInitialGameState, getNewGameId, getUpgradesAndSpells, playSpell, playUpgrade } from "./api.js";
 
 //references to screen elements
 const mainMenu = document.getElementById("mainMenu");
@@ -10,7 +10,10 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 document.getElementById("startButton").addEventListener("click", startGame);
-document.getElementById("beginSimulationButton").addEventListener("click", beginSimulation);
+document.getElementById("beginSimulationButton").addEventListener("click", startBattle);
+let canvasClickHandler; //need it in outer scope, to add and remove from different functions
+
+let socket = null;
 
 //game constants
 const SYMBOL_SIZE = 30;
@@ -43,28 +46,39 @@ scissorsImg.src = "assets/scissors.png";
 //game state
 let isRunning = false;
 let gameLoopId;
-
 let gameId = null;
 let symbols = [];
 let players = [
   {
-    name: "Rock",
+    name: ROCK,
     actions: []
   },
   {
-    name: "Paper",
+    name: PAPER,
     actions: []
   },
   {
-    name: "Scissors",
+    name: SCISSORS,
     actions: []
   }
 ]
-let currentActionCounter = 0
 
-let socket = null;
+const ActionType = {
+  UPGRADE: 'upgrade',
+  SPELL: 'spell'
+};
 
-//functions
+//select phase state
+const SelectPhase = {
+  ACTION: 'action',
+  SYMBOL: 'symbol'
+};
+let currentActionCounter = 0;
+let selectingPlayer;
+let selectedAction;
+
+// ============================= SET UP GAME FUNCTIONS =============================
+
 function startGame() {
   mainMenu.style.display = "none";
   gameOverScreen.style.display = "none";
@@ -89,42 +103,8 @@ async function initGame() {
   console.log(players)
   
   hudChooseUpgradesAndSpells.style.display = "block";
-  const actionsLength = upgradesAndSpells.upgrades.length + upgradesAndSpells.spells.length
 
-  canvas.addEventListener('click', canvasClick)
-  renderUpgradeAndSpellButtons(players[currentActionCounter])
-}
-
-function initPlayers(upgradesAndSpells) {
-  const upgradeNames = upgradesAndSpells.upgrades
-  const spellNames = upgradesAndSpells.spells
-
-  for (const player of players) {
-    for (const upgradeName of upgradeNames) {
-      player.actions.push({name: upgradeName, used: false})
-    }
-    for (const spellName of spellNames) {
-      player.actions.push({name: spellName, used: false})
-    }
-  }
-}
-
-async function beginSimulation() {
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const host = window.location.host;
-  const url = `${protocol}://${host}/ws/game-state/${gameId}`
-  socket = new WebSocket(url);
-  socket.onopen = () => {
-    console.log(`socket connection established for ${url}`);
-  }
-  socket.onmessage = (event) => {
-    //read about interpolation for smoother movement!
-    const json = JSON.parse(event.data);
-    console.log(`received ws data of ${json.symbols.length} symbols`);
-    symbols = json.symbols;
-  }
-
-  await activateGame(gameId)
+  startSelectPhase()
 }
 
 function gameLoop(timestamp) {
@@ -163,6 +143,20 @@ function determineImg(type) {
   }
 }
 
+function initPlayers(upgradesAndSpells) {
+  const upgradeNames = upgradesAndSpells.upgrades
+  const spellNames = upgradesAndSpells.spells
+
+  for (const player of players) {
+    for (const upgradeName of upgradeNames) {
+      player.actions.push({name: upgradeName, type: ActionType.UPGRADE, used: false})
+    }
+    for (const spellName of spellNames) {
+      player.actions.push({name: spellName, type: ActionType.SPELL, used: false})
+    }
+  }
+}
+
 function restartGame() {
   startGame();
 }
@@ -174,13 +168,26 @@ function endGame() {
   gameOverScreen.style.display = "block";
 }
 
-function renderUpgradeAndSpellButtons(player) {
-    const hudChooseUpgradesAndSpells = document.getElementById("hudChooseUpgradesAndSpells")
-    hudChooseUpgradesAndSpells.innerHTML = ""
-    const currentPlayerText = document.createElement("p")
-    currentPlayerText.textContent = `current player: ${player.name}`
-    hudChooseUpgradesAndSpells.appendChild(currentPlayerText)
-    for (const action of player.actions) {
+// ============================= SELECT PHASE FUNCTIONS =============================
+
+//TODO: for multiplayer mode there needs to be UI saying that other player is choosing (so that other players' buttons are not displayed for everybody)
+// + now game state from socket is just symbols, spells need to be included (in a separate object probably "const spells = []" and then add it to game loop)
+// + after each upgrade/spell played, I need to fetch game state to see these upgraded symbols and spells
+
+function startSelectPhase() {
+  selectingPlayer = players[currentActionCounter]
+  canvasClickHandler = (event) => handleCanvasClick(event)
+  canvas.addEventListener('click', canvasClickHandler)
+  renderUpgradeAndSpellButtons()
+}
+
+function renderUpgradeAndSpellButtons() {
+    const hudChooseUpgradesAndSpells = document.getElementById("hudChooseUpgradesAndSpells");
+    hudChooseUpgradesAndSpells.innerHTML = "";
+    const currentPlayerText = document.createElement("p");
+    currentPlayerText.textContent = `current player: ${selectingPlayer.name}`;
+    hudChooseUpgradesAndSpells.appendChild(currentPlayerText);
+    for (const action of selectingPlayer.actions) {
         const btn = document.createElement("button");
         btn.textContent = action.name;
         if (action.used) {
@@ -188,49 +195,87 @@ function renderUpgradeAndSpellButtons(player) {
         }
         //btn.id = "playerActionButton"
         //btn.classList.add("some-class")
-        btn.addEventListener("click", () => handlePlayerActionClick(player, action));
+        btn.addEventListener("click", () => handlePlayerActionClick(action));
         hudChooseUpgradesAndSpells.appendChild(btn);
     }
 }
 
-function handlePlayerActionClick(player, action) {
-  console.log(`player ${player.name} clicked action: ${action.name}`);
-  player.actions.find(playerAction => playerAction.name === action.name).used = true;
-  currentActionCounter += 1;
+function handlePlayerActionClick(action) {
+  console.log(`player ${selectingPlayer.name} clicked action: ${action.name}`);
+  selectedAction = action;
+}
 
-  
-  if (currentActionCounter % 3 === 0 && !player.actions.some(action => action.used === false)) {
-    canvas.removeEventListener('click', canvasClick)
-    renderBeginSimulationButton()
-  } else {
-    renderUpgradeAndSpellButtons(players[currentActionCounter % 3])
+async function handleCanvasClick(event) {
+  if (!selectedAction) {
+    return;
   }
-}
 
-function renderBeginSimulationButton() {
-  hudChooseUpgradesAndSpells.style.display = "none";
-  hudBeginSimulation.style.display = "block"
-}
-
-function canvasClick(event) {
   const boundingRect = canvas.getBoundingClientRect();
   const x = event.clientX - boundingRect.left;
   const y = event.clientY - boundingRect.top;
+  console.log({x, y});
 
-  for (const symbol of symbols) {
-    const symbolX = symbol.position.x
-    const symbolY = symbol.position.y
+  if (selectedAction.type == ActionType.UPGRADE) {
+    for (const symbol of symbols) {
+      const symbolX = symbol.position.x;
+      const symbolY = symbol.position.y;
 
-    if (isSymbolClicked(x, y, symbolX, symbolY)) {
-      console.log("clicked " + symbol.type)
+      // TODO: add validation to backend and respond with info if success or fail
+      if (isSymbolClicked(x, y, symbolX, symbolY) && symbol.type === selectingPlayer.name) {
+        console.log("clicked " + symbol.type);
+        await playUpgrade(gameId, symbol.id, selectedAction.name, selectingPlayer.name);
+        moveToNextPlayerOrFinishSelectPhase();
+      }
     }
+    //console.warn('UPGRADE MUST BE PLAYED ON A SYMBOL!');
+  } else {
+    await playSpell(gameId, selectedAction.name, x, y, selectingPlayer.name);
+    moveToNextPlayerOrFinishSelectPhase();
   }
-  console.log({x, y})
 }
 
 function isSymbolClicked(clickX, clickY, symbolX, symbolY) {
   return clickX > symbolX && 
     clickX < symbolX + SYMBOL_SIZE && 
     clickY > symbolY && 
-    clickY < symbolY + SYMBOL_SIZE
+    clickY < symbolY + SYMBOL_SIZE;
+}
+
+function moveToNextPlayerOrFinishSelectPhase() {
+  selectingPlayer.actions.find(playerAction => playerAction.name === selectedAction.name).used = true;
+  currentActionCounter += 1;
+  selectedAction = null;
+
+  if (currentActionCounter % 3 === 0 && !selectingPlayer.actions.some(action => action.used === false)) {
+    canvas.removeEventListener('click', canvasClickHandler);
+    renderStartBattleButton();
+  } else {
+    selectingPlayer = players[currentActionCounter % 3]
+    renderUpgradeAndSpellButtons();
+  }
+}
+
+function renderStartBattleButton() {
+  hudChooseUpgradesAndSpells.style.display = "none";
+  hudBeginSimulation.style.display = "block";
+}
+
+// ============================= START BATTLE FUNCTIONS =============================
+
+async function startBattle() {
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const host = window.location.host;
+  const url = `${protocol}://${host}/ws/game-state/${gameId}`
+  socket = new WebSocket(url);
+  socket.onopen = () => {
+    console.log(`socket connection established for ${url}`);
+  }
+  socket.onmessage = (event) => {
+    //read about interpolation for smoother movement!
+    const json = JSON.parse(event.data);
+    console.log(`received ws data of ${json.symbols.length} symbols`);
+    symbols = json.symbols;
+  }
+
+  await activateGame(gameId);
 }
