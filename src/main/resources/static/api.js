@@ -11,12 +11,23 @@ export async function getNewGameId() {
 
 export async function getInitialGameState(gameId) {
     try {
-        const response = await fetch(`/game-state/${gameId}`);
+        const response = await fetch(`/new-game-state/${gameId}`);
         const data = await response.json();
         console.log(data)
         return data;
     } catch (error) {
         console.error("can't fetch initial game state:", error);
+    }
+}
+
+export async function getGameState(gameId) {
+    try {
+        const response = await fetch(`/game-state/${gameId}`);
+        const data = await response.json();
+        console.log(data)
+        return data;
+    } catch (error) {
+        console.error("can't fetch game state:", error);
     }
 }
 

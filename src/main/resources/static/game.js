@@ -1,4 +1,4 @@
-import { activateGame, getInitialGameState, getNewGameId, getUpgradesAndSpells, playSpell, playUpgrade } from "./api.js";
+import { activateGame, getInitialGameState, getGameState, getNewGameId, getUpgradesAndSpells, playSpell, playUpgrade } from "./api.js";
 
 //references to screen elements
 const mainMenu = document.getElementById("mainMenu");
@@ -13,6 +13,14 @@ document.getElementById("startButton").addEventListener("click", startGame);
 document.getElementById("beginSimulationButton").addEventListener("click", startBattle);
 document.getElementById("restartGameButton").addEventListener("click", restartGame);
 let canvasClickHandler; //need it in outer scope, to add and remove from different functions
+
+let mouseX = 0;
+let mouseY = 0;
+canvas.addEventListener("mousemove", (event) => {
+  const boundingRect = canvas.getBoundingClientRect();
+  mouseX = event.clientX - boundingRect.left;
+  mouseY = event.clientY - boundingRect.top;
+});
 
 let socket = null;
 
@@ -125,6 +133,50 @@ function gameLoop(timestamp) {
       continue;
     }
 
+    const isSymbolHovered =
+    selectedAction &&
+    selectedAction.type === ActionType.UPGRADE &&
+    mouseX >= symbol.position.x &&
+    mouseX <= symbol.position.x + SYMBOL_SIZE &&
+    mouseY >= symbol.position.y &&
+    mouseY <= symbol.position.y + SYMBOL_SIZE &&
+    symbol.type === selectingPlayer.name;
+    if (isSymbolHovered) {
+      ctx.beginPath();
+      ctx.arc(
+        symbol.position.x + SYMBOL_SIZE / 2,
+        symbol.position.y + SYMBOL_SIZE / 2,
+        SYMBOL_SIZE / 1.5,
+        0,
+        Math.PI * 2
+      );
+      ctx.fillStyle = "rgba(255, 229, 229, 0.8)";
+      ctx.fill();
+
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // TODO: maybe it could show which symbols are affected?
+    const isSpellHovered = selectedAction && selectedAction.type === ActionType.SPELL
+    if (isSpellHovered) {
+      ctx.beginPath();
+      ctx.arc(
+        mouseX,
+        mouseY,
+        75, //TODO: establish spell radius
+        0,
+        Math.PI * 2
+      );
+      ctx.fillStyle = "rgba(255, 229, 229, 0.02)";
+      ctx.fill();
+
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
     ctx.drawImage(image, symbol.position.x, symbol.position.y, SYMBOL_SIZE, SYMBOL_SIZE);
   }
 
@@ -182,9 +234,10 @@ function endGame(winner) {
 
 // ============================= SELECT PHASE FUNCTIONS =============================
 
-//TODO: for multiplayer mode there needs to be UI saying that other player is choosing (so that other players' buttons are not displayed for everybody)
-// + now game state from socket is just symbols, spells need to be included (in a separate object probably "const spells = []" and then add it to game loop)
-// + after each upgrade/spell played, I need to fetch game state to see these upgraded symbols and spells
+//TODO: 
+// display already played upgrades and spells somehow
+// only symbols are taken from fetched gamestates, spells need to be included client-side (in a separate object probably "const spells = []" and then add it to game loop)
+// for multiplayer mode there needs to be UI saying that other player is choosing (so that other players' buttons are not displayed for everybody)
 
 function startSelectPhase() {
   selectingPlayer = players[currentActionCounter]
@@ -205,16 +258,17 @@ function renderUpgradeAndSpellButtons() {
         if (action.used) {
           btn.disabled = true;
         }
-        //btn.id = "playerActionButton"
-        //btn.classList.add("some-class")
-        btn.addEventListener("click", () => handlePlayerActionClick(action));
+        btn.classList.add("action-btn");
+        btn.addEventListener("click", () => handlePlayerActionClick(action, btn));
         hudChooseUpgradesAndSpells.appendChild(btn);
     }
 }
 
-function handlePlayerActionClick(action) {
+function handlePlayerActionClick(action, button) {
   console.log(`player ${selectingPlayer.name} clicked action: ${action.name}`);
   selectedAction = action;
+  document.querySelectorAll(".action-btn").forEach(b => b.classList.remove("clickedActionButton"));
+  button.classList.add("clickedActionButton");
 }
 
 async function handleCanvasClick(event) {
@@ -233,9 +287,13 @@ async function handleCanvasClick(event) {
       const symbolY = symbol.position.y;
 
       // TODO: add validation to backend and respond with info if success or fail
-      if (isSymbolClicked(x, y, symbolX, symbolY) && symbol.type === selectingPlayer.name) {
+      if (isSymbolClicked(x, y, symbolX, symbolY) && symbol.type === selectingPlayer.name && !symbol.upgrade) {
         console.log("clicked " + symbol.type);
-        await playUpgrade(gameId, symbol.id, selectedAction.name, selectingPlayer.name);
+        await playUpgrade(gameId, symbol.id, selectedAction.name, selectingPlayer.name); // TODO: this could return updated game state
+
+        const newGameState = await getGameState(gameId);
+        symbols = newGameState.symbols
+
         moveToNextPlayerOrFinishSelectPhase();
       }
     }

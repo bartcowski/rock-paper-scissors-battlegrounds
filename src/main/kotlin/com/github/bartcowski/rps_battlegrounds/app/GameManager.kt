@@ -21,6 +21,10 @@ class GameManager(
         runGameLoop()
     }
 
+    fun getGameState(gameId: String): GameState {
+        return gameStates[gameId]!! //TODO: throw and 404 probably
+    }
+
     fun createNewGame(gameId: String): GameState {
         //TODO: maybe some checks to avoid two symbols being generated on top of each other?
         val rocks = generateSymbols(SymbolType.ROCK, NUMBER_OF_SYMBOLS, 0)

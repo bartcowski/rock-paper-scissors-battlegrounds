@@ -21,10 +21,15 @@ class GameController(
         return GameId(UUID.randomUUID().toString())
     }
 
-    @GetMapping("/game-state/{gameId}")
-    fun getInitialGameState(@PathVariable gameId: String): GameState {
+    @GetMapping("/new-game-state/{gameId}")
+    fun getNewGameState(@PathVariable gameId: String): GameState {
         val newGameState = gameManager.createNewGame(gameId)
         return newGameState
+    }
+
+    @GetMapping("/game-state/{gameId}")
+    fun getGameState(@PathVariable gameId: String): GameState {
+        return gameManager.getGameState(gameId)
     }
 
     @PostMapping("/game-state/{gameId}")
