@@ -57,6 +57,7 @@ let isRunning = false;
 let gameLoopId;
 let gameId = null;
 let symbols = [];
+let spells = [];
 let players = [
   {
     name: ROCK,
@@ -177,7 +178,44 @@ function gameLoop(timestamp) {
       ctx.stroke();
     }
 
+    if (symbol.upgrade) {
+      ctx.font = "bold 10px Arial";
+      ctx.fillStyle = "black";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        symbol.upgrade, 
+        symbol.position.x + SYMBOL_SIZE / 2, 
+        symbol.position.y - 5
+      );
+    }
+
     ctx.drawImage(image, symbol.position.x, symbol.position.y, SYMBOL_SIZE, SYMBOL_SIZE);
+  }
+
+  for (const spell of spells) {
+    ctx.beginPath();
+    ctx.arc(
+      spell.position.x,
+      spell.position.y,
+      75, //TODO: establish spell radius
+      0,
+      Math.PI * 2
+    );
+    ctx.fillStyle = "rgba(112, 112, 112, 0.02)";
+    ctx.fill();
+    
+    ctx.strokeStyle = "grey";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.font = "bold 10px Arial";
+    ctx.fillStyle = "black";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      spell.spellType + " (" + spell.playedBy + ")",
+      spell.position.x,
+      spell.position.y
+    );
   }
 
   gameLoopId = requestAnimationFrame(gameLoop);
@@ -216,6 +254,7 @@ function restartGame() {
     player.actions = [];
   }
   symbols = [];
+  spells = [];
   selectedAction = null;
   gameOverScreen.style.display = "none";
   mainMenu.style.display = "block";
@@ -224,7 +263,7 @@ function restartGame() {
 function endGame(winner) {
   isRunning = false;
   cancelAnimationFrame(gameLoopId);
-  const winnerText = document.getElementById('winnerInfo')
+  const winnerText = document.getElementById('winnerInfo');
   winnerText.textContent = `winner: ${winner}`;
 
   gameScreen.style.display = "none";
@@ -235,15 +274,14 @@ function endGame(winner) {
 // ============================= SELECT PHASE FUNCTIONS =============================
 
 //TODO: 
-// display already played upgrades and spells somehow
 // only symbols are taken from fetched gamestates, spells need to be included client-side (in a separate object probably "const spells = []" and then add it to game loop)
 // for multiplayer mode there needs to be UI saying that other player is choosing (so that other players' buttons are not displayed for everybody)
 
 function startSelectPhase() {
-  selectingPlayer = players[currentActionCounter]
-  canvasClickHandler = (event) => handleCanvasClick(event)
-  canvas.addEventListener('click', canvasClickHandler)
-  renderUpgradeAndSpellButtons()
+  selectingPlayer = players[currentActionCounter];
+  canvasClickHandler = (event) => handleCanvasClick(event);
+  canvas.addEventListener('click', canvasClickHandler);
+  renderUpgradeAndSpellButtons();
 }
 
 function renderUpgradeAndSpellButtons() {
@@ -300,6 +338,10 @@ async function handleCanvasClick(event) {
     //console.warn('UPGRADE MUST BE PLAYED ON A SYMBOL!');
   } else {
     await playSpell(gameId, selectedAction.name, x, y, selectingPlayer.name);
+
+    const newGameState = await getGameState(gameId);
+    spells = newGameState.spells;
+
     moveToNextPlayerOrFinishSelectPhase();
   }
 }
@@ -349,6 +391,7 @@ async function startBattle() {
       endGame(json.winner)
     }
     symbols = json.symbols;
+    spells = json.spells;
   }
 
   await activateGame(gameId);
