@@ -166,7 +166,7 @@ function gameLoop(timestamp) {
       ctx.arc(
         mouseX,
         mouseY,
-        75, //TODO: establish spell radius
+        75,
         0,
         Math.PI * 2
       );
@@ -197,7 +197,7 @@ function gameLoop(timestamp) {
     ctx.arc(
       spell.position.x,
       spell.position.y,
-      75, //TODO: establish spell radius
+      75,
       0,
       Math.PI * 2
     );
@@ -273,10 +273,6 @@ function endGame(winner) {
 
 // ============================= SELECT PHASE FUNCTIONS =============================
 
-//TODO: 
-// only symbols are taken from fetched gamestates, spells need to be included client-side (in a separate object probably "const spells = []" and then add it to game loop)
-// for multiplayer mode there needs to be UI saying that other player is choosing (so that other players' buttons are not displayed for everybody)
-
 function startSelectPhase() {
   selectingPlayer = players[currentActionCounter];
   canvasClickHandler = (event) => handleCanvasClick(event);
@@ -330,12 +326,11 @@ async function handleCanvasClick(event) {
         await playUpgrade(gameId, symbol.id, selectedAction.name, selectingPlayer.name); // TODO: this could return updated game state
 
         const newGameState = await getGameState(gameId);
-        symbols = newGameState.symbols
+        symbols = newGameState.symbols;
 
         moveToNextPlayerOrFinishSelectPhase();
       }
     }
-    //console.warn('UPGRADE MUST BE PLAYED ON A SYMBOL!');
   } else {
     await playSpell(gameId, selectedAction.name, x, y, selectingPlayer.name);
 
@@ -377,7 +372,7 @@ function renderStartBattleButton() {
 async function startBattle() {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   const host = window.location.host;
-  const url = `${protocol}://${host}/ws/game-state/${gameId}`
+  const url = `${protocol}://${host}/ws/game-state/${gameId}`;
   socket = new WebSocket(url);
   socket.onopen = () => {
     console.log(`socket connection established for ${url}`);
@@ -388,7 +383,7 @@ async function startBattle() {
     console.log(`received ws data of ${json.symbols.length} symbols`);
 
     if (json.status === 'ENDED') {
-      endGame(json.winner)
+      endGame(json.winner);
     }
     symbols = json.symbols;
     spells = json.spells;
