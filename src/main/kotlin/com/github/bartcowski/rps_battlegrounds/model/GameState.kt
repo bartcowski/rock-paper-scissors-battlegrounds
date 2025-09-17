@@ -27,6 +27,9 @@ class GameState(
 
         processCollisions()
 
+        // update previous position here instead of inside the loop to have it equal for all symbols in all iterations
+        symbols.forEach { it.copyPositionToPreviousPosition() }
+
         for (symbol in symbols) {
             val typeToHunt = getTypeToHunt(symbol.type)
             var closestSymbol: Symbol? = null
@@ -35,7 +38,7 @@ class GameState(
                 if (huntedSymbol.type != typeToHunt) {
                     continue
                 }
-                val distance = calculateDistance(symbol.position, huntedSymbol.position)
+                val distance = calculateDistance(symbol.previousPosition, huntedSymbol.previousPosition)
                 if (distance >= shortestDistance) {
                     continue
                 }
@@ -45,10 +48,8 @@ class GameState(
             if (closestSymbol == null) {
                 continue
             }
-            //TODO: I should keep the old position somewhere (inside Symbol class?)
-            // so that next symbols move according to it and simulate parallel movement, now they will read updated position
-            val dx = closestSymbol.position.x - symbol.position.x
-            val dy = closestSymbol.position.y - symbol.position.y
+            val dx = closestSymbol.previousPosition.x - symbol.previousPosition.x
+            val dy = closestSymbol.previousPosition.y - symbol.previousPosition.y
             val directionX = dx / shortestDistance
             val directionY = dy / shortestDistance
             val velocityX = directionX * SYMBOL_SPEED
