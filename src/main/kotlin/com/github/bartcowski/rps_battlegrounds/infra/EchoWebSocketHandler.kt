@@ -3,6 +3,7 @@ package com.github.bartcowski.rps_battlegrounds.infra
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.bartcowski.rps_battlegrounds.app.GameStateBroadcaster
+import com.github.bartcowski.rps_battlegrounds.infra.dto.GameStateDTO
 import com.github.bartcowski.rps_battlegrounds.model.GameState
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
@@ -28,7 +29,7 @@ class EchoWebSocketHandler : TextWebSocketHandler(), GameStateBroadcaster {
     }
 
     override fun broadcast(gameId: String, gameState: GameState) {
-        val json = objectMapper.writeValueAsString(gameState)
+        val json = objectMapper.writeValueAsString(GameStateDTO.fromDomain(gameState))
         //TODO: if game activated too quickly, socket connection is probably not yet established and there is nothing in gameSessions map, NPE is thrown and the whole coroutine loop is broken
         // --> after changing it from "!!" to "?" it seems ok, the loop is already running, it will start the game as soon as the socket session is added to gameSessions
         gameSessions[gameId]?.forEach { session ->

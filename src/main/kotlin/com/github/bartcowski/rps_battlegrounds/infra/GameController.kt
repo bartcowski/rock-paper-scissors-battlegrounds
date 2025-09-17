@@ -1,6 +1,7 @@
 package com.github.bartcowski.rps_battlegrounds.infra
 
 import com.github.bartcowski.rps_battlegrounds.app.GameManager
+import com.github.bartcowski.rps_battlegrounds.infra.dto.GameStateDTO
 import com.github.bartcowski.rps_battlegrounds.model.*
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -14,7 +15,6 @@ import java.util.UUID
 class GameController(
     private val gameManager: GameManager
 ) {
-
     //TODO: it can be done in initialGameState endpoint as well
     @GetMapping("/new-game-id")
     fun getNewGameId(): GameId {
@@ -22,14 +22,13 @@ class GameController(
     }
 
     @GetMapping("/new-game-state/{gameId}")
-    fun getNewGameState(@PathVariable gameId: String): GameState {
-        val newGameState = gameManager.createNewGame(gameId)
-        return newGameState
+    fun getNewGameState(@PathVariable gameId: String): GameStateDTO {
+        return GameStateDTO.fromDomain(gameManager.createNewGame(gameId))
     }
 
     @GetMapping("/game-state/{gameId}")
-    fun getGameState(@PathVariable gameId: String): GameState {
-        return gameManager.getGameState(gameId)
+    fun getGameState(@PathVariable gameId: String): GameStateDTO {
+        return GameStateDTO.fromDomain(gameManager.getGameState(gameId))
     }
 
     @PostMapping("/game-state/{gameId}")
@@ -40,16 +39,16 @@ class GameController(
 
     @GetMapping("/upgrades-and-spells")
     fun getUpgradesAndSpells(): UpgradesAndSpells {
-        val upgrades = Upgrade.entries.map { e -> e.name }.toList()
+        val upgrades = UpgradeType.entries.map { e -> e.name }.toList()
         val spells = SpellType.entries.map { e -> e.name }.toList()
         return UpgradesAndSpells(upgrades, spells)
     }
 
     @PostMapping("/game-state/{gameId}/upgrade")
     fun playUpgrade(@PathVariable gameId: String, @RequestBody playedUpgrade: PlayedUpgrade): ResponseEntity<Void> {
-        val upgrade = Upgrade.valueOf(playedUpgrade.upgrade)
+        val upgradeType = UpgradeType.valueOf(playedUpgrade.upgrade)
         val player = SymbolType.valueOf(playedUpgrade.player)
-        gameManager.applyUpgrade(upgrade, playedUpgrade.symbolId, gameId, player)
+        gameManager.applyUpgrade(upgradeType, playedUpgrade.symbolId, gameId, player)
         return ResponseEntity.status(200).build()
     }
 
